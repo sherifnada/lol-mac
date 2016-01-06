@@ -13,3 +13,8 @@ Someone explaining how to get spectator packets:
     https://gist.github.com/themasch/8375971
 
 WIKI: https://github.com/loldevs/leaguespec/wiki/REST-Service
+
+
+use RIOT API
+
+curl https://na.api.pvp.net/api/lol/na/v1.4/summoner/by-name/katsaz?api_key=3d6fb59c-def9-43c2-80b0-eb137c5af42d

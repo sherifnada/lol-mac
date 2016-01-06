@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/sherifnada/lol-mac/issues"
   },
-  "homepage": "https://github.com/sherifnada/lol-mac"
+  "homepage": "https://github.com/sherifnada/lol-mac",
+  "dependencies": {
+    "xmlhttprequest": "^1.8.0"
+  }
 }
