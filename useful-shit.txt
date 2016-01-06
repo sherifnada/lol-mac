@@ -4,6 +4,12 @@ App path:
 
 Command to run the client in spectator mode: 
 
-riot_launched=true "/Applications/League of Legends.app/Contents/LoL/RADS/solutions/lol_game_client_sln/releases/0.0.0.131/deploy/LeagueOfLegends.app/Contents/MacOS/LeagueofLegends" 8394 LoLLauncher "/Applications/League of Legends.app/Contents/LoL/RADS/projects/lol_air_client/releases/0.0.0.140/deploy/bin/LolClient" "spectator [ip:port] [token] [number] [region]"
+riot_launched=true "/Applications/League of Legends.app/Contents/LoL/RADS/solutions/lol_game_client_sln/releases/0.0.0.193/deploy/LeagueOfLegends.app/Contents/MacOS/LeagueofLegends" 8394 LoLLauncher "/Applications/League of Legends.app/Contents/LoL/RADS/projects/lol_air_client/releases/0.0.0.213/deploy/bin/LolClient" "spectator [ip:port] [token] [number] [region]"
 
 taken from: http://superuser.com/questions/760857/software-launching-league-of-legends-spectator-mode-from-command-line-mac
+
+
+Someone explaining how to get spectator packets: 
+    https://gist.github.com/themasch/8375971
+
+WIKI: https://github.com/loldevs/leaguespec/wiki/REST-Service
