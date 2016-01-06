@@ -76,7 +76,7 @@ function saveGameChunks(platformId, gameId){
 
     //if game has ended, exit
     if (endGameChunkId && +endGameChunkId !== 0){
-        console.log("EXITING");
+        console.log("GAME DONE. EXITING");
         process.exit();
     }
 }
