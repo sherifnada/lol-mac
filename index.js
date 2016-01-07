@@ -1,7 +1,7 @@
 var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 var fs = require('fs');
 var regionPrefix = "http://spectator.na.lol.riotgames.com/observer-mode/rest/";
-var featuredGamesUrl = regionPrefix + "/featured";
+var featuredGamesUrl = regionPrefix + "featured";
 var metadataUrl = regionPrefix + "consumer/getGameMetaData/"; 
 var getLastChunkInfo = "consumer/getLastChunkInfo";
 var getGameDataChunk = "consumer/getGameDataChunk";
