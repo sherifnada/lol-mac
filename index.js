@@ -11,6 +11,18 @@ var lastChunkId;
 var lastKeyFrameId;
 var directoryPrefix; 
 
+// this is to convert from BSON to base64; attach this to the global object to make it easier to call.
+// this takes in a string
+global.btoa = function(str) {
+    return new Buffer(str).toString('base64');  //this is used instead because we are running this in node and not using the actual browser window; actual browser command is window.btoa
+};
+
+// we do the same with the decoding back to base64; again attach to the gloabl object to make it easier to call.
+// this takes in a string as well
+global.atob = function(str) {
+    return new Buffer(str).toString('binary');  //this is used instead because we are running this in node and not using the actual browser window; actual browser command is window.atob
+};
+
 var getJson = function(url){  
     var response = getResponse(url);
     return JSON.parse(response);
@@ -53,6 +65,12 @@ var saveVersion = function(){
     var url = regionPrefix + "consumer/version";
     var version = getResponse(url);
     console.log(directoryPrefix);
+    console.log("Printing version");
+    console.log(version);
+    console.log("Printing encoded version");
+    console.log(btoa(version));
+    console.log("Printing original version");
+    console.log(atob(version));
     writeToDirectory(directoryPrefix + "version", version);
     console.log("Saved version: " + version);
 };
@@ -67,6 +85,10 @@ var saveGameMetaData = function(platformId, gameId){
 
 var saveChunkInfo = function(platformId, gameId){
     var info = getChunkInfo(platformId, gameId);
+    console.log("printing info");
+    console.log(info);
+    console.log("printing conversion");
+    console.log(btoa(info));
     var chunkId = info['chunkId'];
     writeToDirectory(directoryPrefix + chunkId + "info", info); 
 };
@@ -127,4 +149,5 @@ exports.saveSpectatorData = function(platformId, gameId){
     setInterval( function(){ saveChunksUntilGameEnd(platformId, gameId); } , 10000);
 }
 
+console.log(new Buffer('Hello World!').toString('base64'));
 exports.saveSpectatorData("NA1", getRandomGameId());
