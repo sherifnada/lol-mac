@@ -114,10 +114,10 @@ var saveChunksUntilGameEnd = function(platformId, gameId){
 
 exports.saveSpectatorData = function(platformId, gameId){
     //TODO: Store timestamps
-
+    mkdirSync("./replays");
     directoryPrefix = "./replays/" + gameId + "/";
-    console.log(directoryPrefix);
     mkdirSync(directoryPrefix);
+
     saveVersion();
     saveGameMetaData(platformId, gameId);
     saveChunkInfo(platformId, gameId);
@@ -127,4 +127,4 @@ exports.saveSpectatorData = function(platformId, gameId){
     setInterval( function(){ saveChunksUntilGameEnd(platformId, gameId); } , 10000);
 }
 
-exports.saveSpectatorData("NA1", "2060420640");
+exports.saveSpectatorData("NA1", getRandomGameId());
