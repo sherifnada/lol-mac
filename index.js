@@ -1,20 +1,19 @@
 var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 var fs = require('fs');
-
-var regionPrefix = "http://spectator.na.lol.riotgames.com/observer-mode/rest";
+var regionPrefix = "http://spectator.na.lol.riotgames.com/observer-mode/rest/";
 var featuredGamesUrl = regionPrefix + "/featured";
-var getLastChunkInfo = "consumer/getLastChunkInfo"; //<platformId>/<gameID>/1/token"
+var metadataUrl = regionPrefix + "consumer/getGameMetaData/"; 
+var getLastChunkInfo = "consumer/getLastChunkInfo";
 var getGameDataChunk = "consumer/getGameDataChunk";
 var getKeyFrame = "consumer/getKeyFrame";
+
 var lastChunkId; 
 var lastKeyFrameId;
+var directoryPrefix; 
 
 var getJson = function(url){  
-    var request = new XMLHttpRequest();
-    request.responseType = 'json';
-    request.open('GET',url, false);
-    request.send();
-    return JSON.parse(request.responseText);
+    var response = getResponse(url);
+    return JSON.parse(response);
 };
 
 var getResponse = function(url){
@@ -23,6 +22,11 @@ var getResponse = function(url){
     request.send();
     return request.responseText;
 }
+
+var getChunkInfo = function(platformId, gameId){
+    var url = regionPrefix + getLastChunkInfo + "/" + platformId + "/" + gameId + "/1/token"; 
+    return getJson(url);   
+};
 
 function getRandomGameId(){
     return getJson(featuredGamesUrl)['gameList'][0]['gameId'];
@@ -36,52 +40,91 @@ var mkdirSync = function (path) {
   }
 }
 
-function saveGameChunks(platformId, gameId){
-    
-    //get chunk Id
-    var url = regionPrefix + "/" + getLastChunkInfo + "/" + platformId + "/" + gameId + "/1/token"; 
-    var chunkInfo = getJson(url);
+var writeToDirectory = function(path, file){
+    fs.writeFile(path, file, function(err, data){
+        if (err){
+            console.log("Unable to write file to disk: " + path);
+            console.log(err);
+        }
+    });
+};
+
+var saveVersion = function(){
+    var url = regionPrefix + "consumer/version";
+    var version = getResponse(url);
+    console.log(directoryPrefix);
+    writeToDirectory(directoryPrefix + "version", version);
+    console.log("Saved version: " + version);
+};
+
+var saveGameMetaData = function(platformId, gameId){
+    var url = metadataUrl + platformId + "/" + gameId + "/1/token";
+    var metadata = getResponse(url);
+    console.log(url);
+    writeToDirectory(directoryPrefix + "metadata", metadata);
+    console.log("Saved metadata: " + metadata);
+};
+
+var saveChunkInfo = function(platformId, gameId){
+    var info = getChunkInfo(platformId, gameId);
+    var chunkId = info['chunkId'];
+    writeToDirectory(directoryPrefix + chunkId + "info", info); 
+};
+
+var saveLatestChunks = function(platformId, gameId){
+    var chunkInfo = getChunkInfo(platformId, gameId);
     var chunkId = chunkInfo['chunkId'];
     var keyFrameId = chunkInfo['keyFrameId'];
-    var endGameChunkId = chunkInfo['endGameChunkId'];
+
+    saveChunkInfo(platformId, gameId);
 
     if (lastChunkId !== chunkId){
         console.log("CHUNK ID: " + chunkId);
-
         lastChunkId = chunkId;
         url = regionPrefix + "/" + getGameDataChunk + "/" + platformId + "/" + gameId + "/" + chunkId + "/token"; 
-        var chunk = String(getResponse(url));
-        mkdirSync("./replays/" + gameId + "/");
-        fs.writeFile("./replays/" + gameId + "/" + chunkId, chunk, function(err, data){
-            if (err){
-                console.log("Unable to write chunk to disk. ");
-                console.log(err);
-            }
-        });
+        var chunk = getResponse(url);
+        writeToDirectory(directoryPrefix + chunkId, chunk);
     }
 
     if (keyFrameId !== lastKeyFrameId){
         console.log("KEYFRAME ID: " + keyFrameId);
         lastKeyFrameId = keyFrameId;
         url = regionPrefix + "/" + getKeyFrame + "/" + platformId + "/" + gameId + "/" + chunkId + "/token"; 
-        var keyFrame = String(getResponse(url));
-        mkdirSync("./replays/" + gameId + "/");
-        fs.writeFile("./replays/" + gameId + "/" + chunkId + "kf", chunk, function(err, data){
-            if (err){
-                console.log("Unable to write chunk to disk. ");
-                console.log(err);
-            }
-        });
+        var keyFrame = getResponse(url);
+        writeToDirectory(directoryPrefix + "kf" + keyFrameId, keyFrame);
+        
     }
+};
+
+var saveChunksUntilGameEnd = function(platformId, gameId){
+    var chunkInfo = getChunkInfo(platformId, gameId);
+    var chunkId = chunkInfo['chunkId'];
+    var endGameChunkId = chunkInfo['endGameChunkId'];
+    
+    saveLatestChunks(platformId, gameId);
 
     //if game has ended, exit
     if (endGameChunkId && +endGameChunkId !== 0){
-        console.log("GAME DONE. EXITING");
+        console.log("GAME HAS ENDED. EXITING");
         process.exit();
     }
+};
+
+// var gameId = getRandomGameId();
+
+exports.saveSpectatorData = function(platformId, gameId){
+    //TODO: Store timestamps
+
+    directoryPrefix = "./replays/" + gameId + "/";
+    console.log(directoryPrefix);
+    mkdirSync(directoryPrefix);
+    saveVersion();
+    saveGameMetaData(platformId, gameId);
+    saveChunkInfo(platformId, gameId);
+    saveChunksUntilGameEnd(platformId, gameId);
+
+    //check for new chunk every 10 seconds
+    setInterval( function(){ saveChunksUntilGameEnd(platformId, gameId); } , 10000);
 }
 
-var gameId = getRandomGameId();
-console.log("GAME ID: " + gameId);
-//check for new chunk every 10 seconds
-setInterval( function(){ saveGameChunks("NA1", gameId); } , 10000);
+exports.saveSpectatorData("NA1", "2060420640");

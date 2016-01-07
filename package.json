@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/sherifnada/lol-mac",
   "dependencies": {
+    "express": "^4.13.3",
     "xmlhttprequest": "^1.8.0"
   }
 }
