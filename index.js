@@ -1,153 +1,130 @@
-var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+var express = require('express');
+var app = express();
+var prefix = "/observer-mode/rest/";
+var port = 3000;
 var fs = require('fs');
-var regionPrefix = "http://spectator.na.lol.riotgames.com/observer-mode/rest/";
-var featuredGamesUrl = regionPrefix + "featured";
-var metadataUrl = regionPrefix + "consumer/getGameMetaData/"; 
-var getLastChunkInfo = "consumer/getLastChunkInfo";
-var getGameDataChunk = "consumer/getGameDataChunk";
-var getKeyFrame = "consumer/getKeyFrame";
 
+//first & last chunks and keyframes that we saved during the game
+var firstChunkId;
+var firstKeyFrameId;
 var lastChunkId; 
 var lastKeyFrameId;
-var directoryPrefix; 
 
-// this is to convert from BSON to base64; attach this to the global object to make it easier to call.
-// this takes in a string
-global.btoa = function(str) {
-    return new Buffer(str).toString('base64');  //this is used instead because we are running this in node and not using the actual browser window; actual browser command is window.btoa
-};
+//the chunkId currently being served
+var currentChunkId; 
+var currentKeyFrameId;
 
-// we do the same with the decoding back to base64; again attach to the gloabl object to make it easier to call.
-// this takes in a string as well
-global.atob = function(str) {
-    return new Buffer(str).toString('binary');  //this is used instead because we are running this in node and not using the actual browser window; actual browser command is window.atob
-};
+//hardcoded for now. Need to write a wrapper to supply gameId once game has been selected.
+var gameId = "2061443257";
+// var encryptionKey = "oaiY9zliChOfI8/6ci0BAsHn/lxiA3L5";
 
-var getJson = function(url){  
-    var response = getResponse(url);
-    return JSON.parse(response);
-};
+var directoryPrefix = __dirname + "/replays/" + gameId;
 
-var getResponse = function(url){
-    var request = new XMLHttpRequest();
-    request.open('GET',url, false);
-    request.send();
-    return request.responseText;
+function fileExists(path){
+    var out;
+    try{
+        fs.statSync(path);
+        return true;
+    } catch (err){
+        console.log(err);
+        return false;
+    }
 }
 
-var getChunkInfo = function(platformId, gameId){
-    var url = regionPrefix + getLastChunkInfo + "/" + platformId + "/" + gameId + "/1/token"; 
-    return getJson(url);   
-};
+function init(){
+    var sessionDir = directoryPrefix + "/sessionData";
+    if (fileExists(sessionDir)){
+        fs.readFile(sessionDir, function(err, data){
+            // firstChunkId = data['firstSavedChunkId'];
+            // lastChunkId = data['lastSavedChunkId'];
 
-function getRandomGameId(){
-    return getJson(featuredGamesUrl)['gameList'][0]['gameId'];
+            //more hardcode...proof of concept bois
+            firstChunkId = 17; 
+            lastChunkId = 76; 
+
+            firstKeyFrameId = data['firstSavedKeyFrameId'];
+            lastKeyFrameId = data['lastSavedKeyFrameId'];
+
+            currentChunkId = firstChunkId;
+        });
+    }else{
+        throw new Error("game sessionData was not found: " + sessionDir);
+    }
+
 }
 
-var mkdirSync = function (path) {
-  try {
-    fs.mkdirSync(path);
-  } catch(e) {
-    if ( e.code != 'EEXIST' ) throw e;
-  }
-}
+app.get("/", function(req, res){
+    console.log("visited /");
+    res.send("HELLO WORLD!");
+});
 
-var writeToDirectory = function(path, file){
-    fs.writeFile(path, file, function(err, data){
-        if (err){
-            console.log("Unable to write file to disk: " + path);
+app.get(prefix + "consumer/version", function(req, res){
+    //This is awful. But just for proof of concept. I promise.
+    //TODO: shoot sherif.
+    res.send("1.82.102");
+});
+
+//get metadata
+app.get(prefix + "consumer/getGameMetaData/:platformId/:gameId/*/token", function(req, res){
+    console.log("platformId: " + req.params.platformId);
+    //TODO: Add platform ID into directory to allow cross-platform recording
+    fs.readFile(directoryPrefix + "/metadata.json", function(err, data){
+        if (err)
             console.log(err);
+        else{
+            // console.log("metadata sent");
+            // console.log(data.toString());
+            res.send(JSON.parse(data.toString()));
         }
     });
-};
+});
 
-var saveVersion = function(){
-    var url = regionPrefix + "consumer/version";
-    var version = getResponse(url);
-    console.log(directoryPrefix);
-    console.log("Printing version");
-    console.log(version);
-    console.log("Printing encoded version");
-    console.log(btoa(version));
-    console.log("Printing original version");
-    console.log(atob(version));
-    writeToDirectory(directoryPrefix + "version", version);
-    console.log("Saved version: " + version);
-};
-
-var saveGameMetaData = function(platformId, gameId){
-    var url = metadataUrl + platformId + "/" + gameId + "/1/token";
-    var metadata = getResponse(url);
-    console.log(url);
-    writeToDirectory(directoryPrefix + "metadata", metadata);
-    console.log("Saved metadata: " + metadata);
-};
-
-var saveChunkInfo = function(platformId, gameId){
-    var info = getChunkInfo(platformId, gameId);
-    console.log("printing info");
-    console.log(info);
-    console.log("printing conversion");
-    console.log(btoa(info));
-    var chunkId = info['chunkId'];
-    writeToDirectory(directoryPrefix + chunkId + "info", info); 
-};
-
-var saveLatestChunks = function(platformId, gameId){
-    var chunkInfo = getChunkInfo(platformId, gameId);
-    var chunkId = chunkInfo['chunkId'];
-    var keyFrameId = chunkInfo['keyFrameId'];
-
-    saveChunkInfo(platformId, gameId);
-
-    if (lastChunkId !== chunkId){
-        console.log("CHUNK ID: " + chunkId);
-        lastChunkId = chunkId;
-        url = regionPrefix + "/" + getGameDataChunk + "/" + platformId + "/" + gameId + "/" + chunkId + "/token"; 
-        var chunk = getResponse(url);
-        writeToDirectory(directoryPrefix + chunkId, chunk);
+//get gameInfo
+app.get(prefix + "consumer/getLastChunkInfo/:platform/:gameId/*/token", function(req, res){
+    var fileDir = directoryPrefix + "/" + currentChunkId + "info.json";
+    console.log(fileDir);
+    if (fileExists(fileDir)){
+        fs.readFile(fileDir, function(err, data){
+            if (err)
+                console.log(err);
+            else{
+                console.log(data.toString());
+                res.send(JSON.parse(data.toString()));     
+            }
+        }); 
+    }else{
+        console.log("ERROR: COULD NOT FIND INFO FOR CHUNK#: " + currentChunkId);
     }
+});
 
-    if (keyFrameId !== lastKeyFrameId){
-        console.log("KEYFRAME ID: " + keyFrameId);
-        lastKeyFrameId = keyFrameId;
-        url = regionPrefix + "/" + getKeyFrame + "/" + platformId + "/" + gameId + "/" + chunkId + "/token"; 
-        var keyFrame = getResponse(url);
-        writeToDirectory(directoryPrefix + "kf" + keyFrameId, keyFrame);
-        
+//get data chunk
+app.get(prefix + "consumer/getGameDataChunk/:platformId/:gameId/:chunkId/token", function(req, res){
+    var fileDir = directoryPrefix + "/" + req.params.chunkId;
+    if (fileExists(fileDir)){
+        res.sendFile(fileDir);
+        if (+req.params.chunkId === currentChunkId){
+            currentChunkId++;
+
+            //if game has ended then end in 3 minutes
+            if (currentChunkId == lastChunkId){
+                setInterval(3000 * 60, function(){ process.exit(); });
+            }
+        }
+    }else{
+        console.log("ERROR: COULD NOT FIND CHUNK: " + currentChunkId);
     }
-};
+});
 
-var saveChunksUntilGameEnd = function(platformId, gameId){
-    var chunkInfo = getChunkInfo(platformId, gameId);
-    var chunkId = chunkInfo['chunkId'];
-    var endGameChunkId = chunkInfo['endGameChunkId'];
-    
-    saveLatestChunks(platformId, gameId);
-
-    //if game has ended, exit
-    if (endGameChunkId && +endGameChunkId !== 0){
-        console.log("GAME HAS ENDED. EXITING");
-        process.exit();
+//get keyframe
+app.get(prefix + "consumer/getKeyFrame/:playformId/:gameId/:keyFrameId/token", function(req, res){
+    var fileDir = directoryPrefix + "/kf" + req.params.keyFrameId;
+    if (fileExists(fileDir)){
+        res.sendFile(fileDir);
+    }else{
+        console.log("ERROR: CANNOT FIND KEYFRAME: " + req.params.keyFrameId);
     }
-};
+});
 
-// var gameId = getRandomGameId();
-
-exports.saveSpectatorData = function(platformId, gameId){
-    //TODO: Store timestamps
-    mkdirSync("./replays");
-    directoryPrefix = "./replays/" + gameId + "/";
-    mkdirSync(directoryPrefix);
-
-    saveVersion();
-    saveGameMetaData(platformId, gameId);
-    saveChunkInfo(platformId, gameId);
-    saveChunksUntilGameEnd(platformId, gameId);
-
-    //check for new chunk every 10 seconds
-    setInterval( function(){ saveChunksUntilGameEnd(platformId, gameId); } , 10000);
-}
-
-console.log(new Buffer('Hello World!').toString('base64'));
-exports.saveSpectatorData("NA1", getRandomGameId());
+init();
+var server = app.listen(port);
+console.log("Listening on port " + port);

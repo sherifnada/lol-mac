@@ -4,6 +4,8 @@ App path:
 
 Command to run the client in spectator mode: 
 
+cd "/Applications/League of Legends.app/Contents/LoL/RADS/solutions/lol_game_client_sln/releases/0.0.0.193/deploy/LeagueOfLegends.app/Contents/MacOS"
+
 riot_launched=true "/Applications/League of Legends.app/Contents/LoL/RADS/solutions/lol_game_client_sln/releases/0.0.0.193/deploy/LeagueOfLegends.app/Contents/MacOS/LeagueofLegends" 8394 LoLLauncher "/Applications/League of Legends.app/Contents/LoL/RADS/projects/lol_air_client/releases/0.0.0.213/deploy/bin/LolClient" "spectator [ip:port] [encryption-key] [gameID] [regionID]"
 
 taken from: http://superuser.com/questions/760857/software-launching-league-of-legends-spectator-mode-from-command-line-mac
@@ -18,3 +20,7 @@ WIKI: https://github.com/loldevs/leaguespec/wiki/REST-Service
 use RIOT API
 
 curl https://na.api.pvp.net/api/lol/na/v1.4/summoner/by-name/katsaz?api_key=3d6fb59c-def9-43c2-80b0-eb137c5af42d
+
+
+show all applications that opened TCP connections on Mac
+lsof -i -n -P | grep TCP    
